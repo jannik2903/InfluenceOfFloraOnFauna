@@ -1,0 +1,66 @@
+---
+title: "Analisis"
+author: "Jannik Hannemann"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(conflicted)
+library(ggplot2)
+library(here)
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::lag)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r }
+data <- read_csv2(here("2025-02-07 Datos ambientales PIM.csv"))
+
+graph_data <- data %>% 
+  group_by(Ubicación) %>%
+  summarise(
+    `Temperatura media` = mean(`Temperatura`, na.rm = TRUE),
+    `Temperatura desviación típica` = sd(`Temperatura`, na.rm = TRUE),
+    `Humedad media` = mean(`Humedad`, na.rm = TRUE),
+    `Humedad desviación típica` = sd(`Humedad`, na.rm = TRUE),
+  )
+graph_data %>% 
+  ggplot(aes(y = `Temperatura media`, x = `Ubicación`, fill = Ubicación)) +
+  geom_col() + 
+  ylab("Temperatura media en °C") +
+  ggtitle("Temperatura media por ubicación con la desviación típica") +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
+  coord_cartesian(ylim = c(10.5, 14)) +
+  geom_errorbar(aes(ymin = `Temperatura media` - `Temperatura desviación típica`, 
+                ymax = `Temperatura media` + `Temperatura desviación típica`), 
+                width = 0.2, position = position_dodge(0.9))
+  
+graph_data %>%
+  ggplot(aes(y = `Humedad media`, x = `Ubicación`, fill = Ubicación)) +
+  geom_col() + 
+  ylab("Humedad media en °C") +
+  ggtitle("Humedad media por ubicación con la desviación típica") +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
+  coord_cartesian(ylim = c(0, 0.35)) +
+  geom_errorbar(aes(ymin = `Humedad media` - `Humedad desviación típica`, 
+                ymax = `Humedad media` + `Humedad desviación típica`), 
+                width = 0.2, position = position_dodge(0.9))
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
