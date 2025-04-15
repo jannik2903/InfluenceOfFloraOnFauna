@@ -11,17 +11,14 @@ library(tidyverse)
 library(conflicted)
 library(ggplot2)
 library(here)
+library(ggrepel)
+
 conflicts_prefer(dplyr::filter)
 conflicts_prefer(dplyr::lag)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r }
+```{r Environmental data}
 data <- read_csv2(here("2025-02-07 Datos ambientales PIM.csv"))
 
 graph_data <- data %>% 
@@ -44,23 +41,86 @@ graph_data %>%
                 width = 0.2, position = position_dodge(0.9))
   
 graph_data %>%
-  ggplot(aes(y = `Humedad media`, x = `Ubicación`, fill = Ubicación)) +
+  ggplot(aes(y = `Humedad media` * 100, x = `Ubicación`, fill = Ubicación)) +
   geom_col() + 
-  ylab("Humedad media en °C") +
+  ylab("Humedad media en %") +
   ggtitle("Humedad media por ubicación con la desviación típica") +
   theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
-  coord_cartesian(ylim = c(0, 0.35)) +
-  geom_errorbar(aes(ymin = `Humedad media` - `Humedad desviación típica`, 
-                ymax = `Humedad media` + `Humedad desviación típica`), 
+  coord_cartesian(ylim = c(0, 35)) +
+  geom_errorbar(aes(ymin = (`Humedad media` - `Humedad desviación típica`) * 100, 
+                ymax = (`Humedad media` + `Humedad desviación típica`) * 100) , 
                 width = 0.2, position = position_dodge(0.9))
 
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
+```{r}
+data2 <- read.csv2(here("2025-04-08 - datos especies - medias.csv"), fileEncoding = "UTF-8")
+
+graph_data2 <- data2 %>% 
+  mutate(Especie = substring(Especie, 1, nchar(Especie) - 2)) %>% 
+  group_by(Especie) %>% 
+  summarise(
+    `Olivo` = sum(Olivo, na.rm = TRUE),
+    `Entreolivo` = sum(Entreolivo, na.rm = TRUE),
+    `Prado` = sum(Prado, na.rm = TRUE),
+  ) %>% 
+  arrange(desc(Olivo))
+
+OlivoPosData <- graph_data2 %>%
+  filter(Olivo > 0) %>%
+  mutate(csum = rev(cumsum(rev(Olivo))), 
+         Olypos = Olivo/2 + lead(csum, 1),
+         Olypos = if_else(is.na(Olypos), Olivo/2, Olypos))
+
+EntreOlivoPosData <- graph_data2 %>%
+  filter(Entreolivo > 0) %>%
+  mutate(csum = rev(cumsum(rev(Entreolivo))), 
+         EntreOlypos = Entreolivo/2 + lead(csum, 1),
+         EntreOlypos = if_else(is.na(EntreOlypos), Entreolivo/2, EntreOlypos))
+
+PradoPosData <- graph_data2 %>%
+  filter(Prado > 0) %>%
+  mutate(csum = rev(cumsum(rev(Prado))), 
+         Pradoypos = Prado/2 + lead(csum, 1),
+         Pradoypos = if_else(is.na(Pradoypos), Prado/2, Pradoypos))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+``` {r}
+graph_data2 %>% 
+  ggplot(aes(x="", y=Olivo, fill=fct_inorder(Especie))) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  geom_label_repel(data = OlivoPosData,
+                   aes(y = Olypos, label = paste0(Especie)),
+                   size = 4.5, nudge_x = 1, show.legend = FALSE) +
+  theme_void() + 
+  theme(legend.position = "none", plot.margin = margin(t = 10, r = 0, b = 0, l = 0, unit = "pt"))
+```
+
+```{r}
+graph_data2 %>% 
+  ggplot(aes(x="", y=Prado, fill=fct_inorder(Especie))) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  geom_label_repel(data = PradoPosData,
+                   aes(y = Pradoypos, label = paste0(Especie)),
+                   size = 4.5, nudge_x = 1, show.legend = FALSE) +
+  theme_void() + 
+  theme(legend.position = "none", plot.margin = margin(t = 10, r = 0, b = 0, l = 0, unit = "pt"))
+```
+
+```{r}
+graph_data2 %>% 
+  ggplot(aes(x="", y=Entreolivo, fill=fct_inorder(Especie))) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  geom_label_repel(data = EntreOlivoPosData,
+                   aes(y = EntreOlypos, label = paste0(Especie)),
+                   size = 4.5, nudge_x = 1, show.legend = FALSE) +
+  theme_void() + 
+  theme(legend.position = "none", plot.margin = margin(t = 10, r = 0, b = 0, l = 0, unit = "pt"))
+
+```
+
